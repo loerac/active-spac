@@ -10,7 +10,8 @@ BASE_URL = 'https://www.spachero.com/'
 # Argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--symbol', help='SPACs symbol name')
-parser.add_argument('-i', '--industry', help='Type of industry: health, ev, tech, consumer, energy, cannabis, sustainability')
+parser.add_argument('-i', '--industry', help='Display all SPACs with a type of industry')
+parser.add_argument('-li', '--list-industry', help='List all the types of industries', action='store_true')
 parser.add_argument('-tg', '--top-gainers', help='Display the top 5 gainers', action='store_true')
 parser.add_argument('-tl', '--top-losers', help='Display the top 5 losers', action='store_true')
 parser.add_argument('-vl', '--volume-leaders', help='Display the top volume leaders', action='store_true')
@@ -99,6 +100,9 @@ def GetSPACs(spac_type=None):
         }
         spacs = spacs.append(spac, ignore_index=True)
 
+        if symbol == spac_type:
+            break
+
     # Rename the index to be the symbols
     spacs = spacs.set_index('Symbol')
 
@@ -109,6 +113,19 @@ def GetSPACs(spac_type=None):
     spacs.loc[(spacs.Expected_Close == '0'), 'Expected_Close'] = 'unknown'
 
     return spacs
+
+def ListIndustries():
+    """
+    Get the list of industries that SPACs are in
+    """
+    spacs = GetSPACs()
+    industries = spacs.Industry.tolist()
+    industries = list(dict.fromkeys(industries))
+
+    print('List of SPAC industries:')
+    for industry in industries:
+        print(f'  * {industry}')
+    exit()
 
 def TopGainers(limit=5):
     """
@@ -190,6 +207,8 @@ if __name__=='__main__':
         IsEmpty(spacs, f'No SPAC found for {args.symbol.upper()}')
         spacs = spacs.loc[args.symbol.upper()]
         file_name = args.symbol.upper()
+    elif args.list_industry:
+        ListIndustries()
     elif args.industry != None:
         spacs = GetSPACs(spac_type=args.industry.lower())
         IsEmpty(spacs, f'No industry found for {args.industry.lower()}')

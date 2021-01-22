@@ -4,8 +4,10 @@ Get a list of active SPAC(s) from [spacHero.com](https://www.spachero.com/).
 ## Commands
 * `-s` or `--symbol`:
   * Search for that SPAC and display it if it's found
-* `-i` or `industry`:
+* `-i` or `--industry`:
   * Search for a specific industry of SPACs
+* `-li` or `--list-industry`:
+  * Display the list of industries the SPACs are in
 * `-tg` or `--top-gainers`:
   * Get the top gainers
 * `-tl` or `--top-losers`:
