@@ -8,6 +8,8 @@ Get a list of active SPAC(s) from [spacHero.com](https://www.spachero.com/).
   * Search for a specific industry of SPACs
 * `-li` or `--list-industry`:
   * Display the list of industries the SPACs are in
+* `-o` or `--optionable`:
+  * Display only SPACs that are optionable
 * `-tg` or `--top-gainers`:
   * Get the top gainers
 * `-tl` or `--top-losers`:

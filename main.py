@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--symbol', help='SPACs symbol name')
 parser.add_argument('-i', '--industry', help='Display all SPACs with a type of industry')
 parser.add_argument('-li', '--list-industry', help='List all the types of industries', action='store_true')
+parser.add_argument('-o', '--optionable', help='List all SPACs that are optionable', action='store_true')
 parser.add_argument('-tg', '--top-gainers', help='Display the top 5 gainers', action='store_true')
 parser.add_argument('-tl', '--top-losers', help='Display the top 5 losers', action='store_true')
 parser.add_argument('-vl', '--volume-leaders', help='Display the top volume leaders', action='store_true')
@@ -28,13 +29,14 @@ def IsEmpty(spac, msg):
         print(msg)
         exit()
 
-def GetSPACs(spac_type=None):
+def GetSPACs(spac_type=None, only_optionable=False):
     """
     Get the list of SPACs form spacehero.com
 
     :param spac_type - str: Type of SPAC to look for;
                             * Symbol
                             * Industry
+    :param only_optionable - bool: Flag to only check for optionable SPACs
 
     :return: Pandas DataFrame of SPAC(s)
     """
@@ -69,7 +71,9 @@ def GetSPACs(spac_type=None):
 
         # Get industry to check if that is the SPAC we're looking for
         industry = td[5].text.strip().lower()
-        if spac_type != None and symbol != spac_type and industry != spac_type:
+        is_optionable = True if td[8].text.strip() == 'Yes' else False
+        if spac_type != None and symbol != spac_type and industry != spac_type or \
+           only_optionable and not is_optionable:
             continue
 
         # Some rows are labeled as '2.24*1000' or '-'
@@ -93,7 +97,7 @@ def GetSPACs(spac_type=None):
             "Industry": industry,
             "News_Sentiment": td[6].text.strip(),
             "Market_Cap": market_cap,
-            "Optionable": td[8].text.strip(),
+            "Optionable": is_optionable,
             "Key_Date": td[9].text.strip(),
             "Date_Desc": td[10].text.strip(),
             "Expected_Close": td[11].text.strip()
@@ -210,7 +214,7 @@ if __name__=='__main__':
     elif args.list_industry:
         ListIndustries()
     elif args.industry != None:
-        spacs = GetSPACs(spac_type=args.industry.lower())
+        spacs = GetSPACs(spac_type=args.industry.lower(), only_optionable=args.optionable)
         IsEmpty(spacs, f'No industry found for {args.industry.lower()}')
         file_name = args.industry.lower()
     else:
