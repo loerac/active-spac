@@ -11,6 +11,9 @@ BASE_URL = 'https://www.spachero.com/'
 parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--symbol', help='SPACs symbol name')
 parser.add_argument('-i', '--industry', help='Type of industry: health, ev, tech, consumer, energy, cannabis, sustainability')
+parser.add_argument('-tg', '--top-gainers', help='Display the top 5 gainers', action='store_true')
+parser.add_argument('-tl', '--top-losers', help='Display the top 5 losers', action='store_true')
+parser.add_argument('-vl', '--volume-leaders', help='Display the top volume leaders', action='store_true')
 parser.add_argument('-w', '--write-to-file', help='Write the results to a file; json or csv')
 args = parser.parse_args()
 
@@ -107,6 +110,56 @@ def GetSPACs(spac_type=None):
 
     return spacs
 
+def TopGainers(limit=5):
+    """
+    Get the top SPACs with the biggest increase in price
+
+    :param limit - int: How many SPACs to show
+
+    :return: DataFrame with the biggest increase in price
+    """
+    spacs = GetSPACs()
+    spacs.Change = spacs.Change.str.replace(r' %', '')
+    spacs.Change = spacs.Change.astype(float)
+
+    top_gainers = spacs.sort_values('Change', ascending=False).head(limit)
+    top_gainers.Change = top_gainers.Change.astype(str) + ' %'
+
+    return top_gainers[['Price', 'Change', 'Volume']]
+
+def TopLosers(limit=5):
+    """
+    Get the top SPACs with the biggest decrease in price
+
+    :param limit - int: How many SPACs to show
+
+    :return: DataFrame with the biggest decrease in price
+    """
+    spacs = GetSPACs()
+    spacs.Change = spacs.Change.str.replace(r' %', '')
+    spacs.Change = spacs.Change.astype(float)
+
+    top_losers = spacs.sort_values('Change').head(limit)
+    top_losers.Change = top_losers.Change.astype(str) + ' %'
+
+    return top_losers[['Price', 'Change', 'Volume']]
+
+def VolumeLeaders(limit=5):
+    """
+    Get the top SPACs with the most volume
+
+    :param limit - int: How many SPACs to show
+
+    :return: DataFrame with the most volume
+    """
+    spacs = GetSPACs()
+    spacs.Volume = spacs.Volume.str.replace(r',', '')
+    spacs.Volume = spacs.Volume.astype(float)
+    volume_leaders = spacs.sort_values('Volume', ascending=False).head(limit)
+    volume_leaders.Volume = volume_leaders.apply(lambda x: '{:,}'.format(x.Volume), axis=1)
+
+    return volume_leaders[['Price', 'Change', 'Volume']]
+
 def WriteToFile(ftype, spacs, file_name):
     """
     Write SPAC(s) to a file
@@ -123,7 +176,16 @@ def WriteToFile(ftype, spacs, file_name):
 
 if __name__=='__main__':
     file_name = 'spacs'
-    if args.symbol != None:
+    if args.top_gainers:
+        spacs = TopGainers()
+        file_name = 'top_gainers'
+    elif args.top_losers:
+        spacs = TopLosers()
+        file_name = 'top_losers'
+    elif args.volume_leaders:
+        spacs = VolumeLeaders()
+        file_name = 'volume_leaders'
+    elif args.symbol != None:
         spacs = GetSPACs(spac_type=args.symbol.upper())
         IsEmpty(spacs, f'No SPAC found for {args.symbol.upper()}')
         spacs = spacs.loc[args.symbol.upper()]
