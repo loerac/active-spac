@@ -47,12 +47,13 @@ def GetSPACs(spac_type=None, only_optionable=False):
                                   'Volume',
                                   'Target',
                                   'Industry',
-                                  'News_Sentiment',
                                   'Market_Cap',
+                                  'Shares_Outstanding',
                                   'Optionable',
-                                  'Key_Date',
-                                  'Date_Desc',
-                                  'Expected_Close',
+                                  'Important_Date',
+                                  'Latest_Update',
+                                  'Merger_Expectation',
+                                  'IPO_Date',
                                  ])
 
     # Set both the key and the value of the User-Agent header
@@ -61,46 +62,35 @@ def GetSPACs(spac_type=None, only_optionable=False):
     webpage = urlopen(req).read()
     html = bs(webpage, 'html.parser')
 
-    body = html.find_all('tbody')
-    rows = body[0].find_all('tr')
-    for row in rows:
-        symbol = row.find('div', attrs={'class':'font-size-14'}).text.strip()   # 0
-        price = row.find('span').text.strip()                                   # 1
-        price_change = row.find('label', attrs={'class':'label'}).text.strip()  # 2
-        td = row.find_all('td')
+    rows = html.find_all('tr')
+    for i in range(8, len(rows)):
+        # Get values from table
+        td = rows[i].find_all('td')
 
-        # Get industry to check if that is the SPAC we're looking for
+        symbol = td[0].find('div', attrs={'class':'font-size-14'}).text.strip()
         industry = td[5].text.strip().lower()
         is_optionable = True if td[8].text.strip() == 'Yes' else False
+
+        # Filter out unneeded SPACs
         if spac_type != None and symbol != spac_type and industry != spac_type or \
            only_optionable and not is_optionable:
             continue
 
-        # Some rows are labeled as '2.24*1000' or '-'
-        # Changing it to be 2,240.0 and 0, respectively
-        market_cap = td[7].text.strip().split('*')
-        if len(market_cap) != 1:
-            market_cap = float(market_cap[0]) * float(market_cap[1])
-        else:
-            try:
-                market_cap = float(market_cap[0])
-            except Exception as e:
-                market_cap = 'unknown'
-
         # Add SPAC to lists
         spac = {
             "Symbol": symbol,
-            "Price": price,
-            "Change": price_change,
+            "Price": td[1].text.strip() + ' $',
+            "Change": td[2].text.strip(),
             "Volume": td[3].text.strip(),
             "Target": td[4].text.strip(),
             "Industry": industry,
-            "News_Sentiment": td[6].text.strip(),
-            "Market_Cap": market_cap,
+            "Market_Cap": td[6].text.strip(),
+            "Shares_Outstanding": td[7].text.strip(),
             "Optionable": is_optionable,
-            "Key_Date": td[9].text.strip(),
-            "Date_Desc": td[10].text.strip(),
-            "Expected_Close": td[11].text.strip()
+            "Important_Date": td[9].text.strip(),
+            "Latest_Update": td[10].text.strip(),
+            "Merger_Expectation": td[11].text.strip(),
+            "IPO_Date": td[12].text.strip()
         }
         spacs = spacs.append(spac, ignore_index=True)
 
@@ -110,11 +100,18 @@ def GetSPACs(spac_type=None, only_optionable=False):
     # Rename the index to be the symbols
     spacs = spacs.set_index('Symbol')
 
-    # Set default '0' value to be 'unknown' for unknown values
-    spacs.loc[(spacs.Target == '0'), 'Target'] = 'unknown'
-    spacs.loc[(spacs.Key_Date == '0'), 'Key_Date'] = 'unknown'
-    spacs.loc[(spacs.Date_Desc == '0'), 'Date_Desc'] = 'unknown'
-    spacs.loc[(spacs.Expected_Close == '0'), 'Expected_Close'] = 'unknown'
+    # Set default 'NaN' or 'NaT' values to be 'unknown' for unknown values
+    spacs.loc[(spacs.Target == 'NaN'), 'Target'] = 'unknown'
+    spacs.loc[(spacs.Market_Cap == 'NaN'), 'Market_Cap'] = 'unknown'
+    spacs.loc[(spacs.Shares_Outstanding == 'NaN'), 'Shares_Outstanding'] = 'unknown'
+    spacs.loc[(spacs.Important_Date == 'NaT'), 'Important_Date'] = 'unknown'
+    spacs.loc[(spacs.Latest_Update == 'NaN'), 'Latest_Update'] = 'unknown'
+    spacs.loc[(spacs.Merger_Expectation == 'NaN'), 'Merger_Expectation'] = 'unknown'
+    spacs.loc[(spacs.IPO_Date == 'NaN'), 'IPO_Date'] = 'unknown'
+
+    # Make the Volume format pretty
+    spacs.Volume = spacs.Volume.astype(int)
+    spacs.Volume = spacs.apply(lambda x: '{:,}'.format(x.Volume), axis=1)
 
     return spacs
 
@@ -175,7 +172,7 @@ def VolumeLeaders(limit=5):
     """
     spacs = GetSPACs()
     spacs.Volume = spacs.Volume.str.replace(r',', '')
-    spacs.Volume = spacs.Volume.astype(float)
+    spacs.Volume = spacs.Volume.astype(int)
     volume_leaders = spacs.sort_values('Volume', ascending=False).head(limit)
     volume_leaders.Volume = volume_leaders.apply(lambda x: '{:,}'.format(x.Volume), axis=1)
 
@@ -218,7 +215,7 @@ if __name__=='__main__':
         IsEmpty(spacs, f'No industry found for {args.industry.lower()}')
         file_name = args.industry.lower()
     else:
-        spacs = GetSPACs()
+        spacs = GetSPACs(only_optionable=args.optionable)
         IsEmpty(spacs, f'No active spacs found')
         pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', 5)
