@@ -44,6 +44,7 @@ def GetSPACs(spac_type=None, only_optionable=False):
     spacs = pd.DataFrame(columns=['Symbol',
                                   'Price',
                                   'Change',
+                                  'Warrant',
                                   'Volume',
                                   'Target',
                                   'Industry',
@@ -67,9 +68,9 @@ def GetSPACs(spac_type=None, only_optionable=False):
         # Get values from table
         td = rows[i].find_all('td')
 
-        symbol = td[0].find('div', attrs={'class':'font-size-14'}).text.strip()
-        industry = td[5].text.strip().lower()
-        is_optionable = True if td[8].text.strip() == 'Yes' else False
+        symbol = td[0].find('div', attrs={'class':'font-size-16'}).text.strip()
+        industry = td[6].text.strip().lower()
+        is_optionable = True if td[9].text.strip() == 'Yes' else False
 
         # Filter out unneeded SPACs
         if spac_type != None and symbol != spac_type and industry != spac_type or \
@@ -81,16 +82,17 @@ def GetSPACs(spac_type=None, only_optionable=False):
             "Symbol": symbol,
             "Price": td[1].text.strip() + ' $',
             "Change": td[2].text.strip(),
-            "Volume": td[3].text.strip(),
-            "Target": td[4].text.strip(),
+            "Warrant": td[3].text.strip()[1:] + ' $',
+            "Volume": td[4].text.strip()[1:] + ' $',
+            "Target": td[5].text.strip(),
             "Industry": industry,
-            "Market_Cap": td[6].text.strip(),
-            "Shares_Outstanding": td[7].text.strip(),
+            "Market_Cap": td[7].text.strip(),
+            "Shares_Outstanding": td[8].text.strip(),
             "Optionable": is_optionable,
-            "Important_Date": td[9].text.strip(),
-            "Latest_Update": td[10].text.strip(),
-            "Merger_Expectation": td[11].text.strip(),
-            "IPO_Date": td[12].text.strip()
+            "Important_Date": td[10].text.strip(),
+            "Latest_Update": td[11].text.strip(),
+            "Merger_Expectation": td[12].text.strip(),
+            "IPO_Date": td[13].text.strip()
         }
         spacs = spacs.append(spac, ignore_index=True)
 
@@ -108,10 +110,6 @@ def GetSPACs(spac_type=None, only_optionable=False):
     spacs.loc[(spacs.Latest_Update == 'NaN'), 'Latest_Update'] = 'unknown'
     spacs.loc[(spacs.Merger_Expectation == 'NaN'), 'Merger_Expectation'] = 'unknown'
     spacs.loc[(spacs.IPO_Date == 'NaN'), 'IPO_Date'] = 'unknown'
-
-    # Make the Volume format pretty
-    spacs.Volume = spacs.Volume.astype(int)
-    spacs.Volume = spacs.apply(lambda x: '{:,}'.format(x.Volume), axis=1)
 
     return spacs
 
@@ -172,9 +170,11 @@ def VolumeLeaders(limit=5):
     """
     spacs = GetSPACs()
     spacs.Volume = spacs.Volume.str.replace(r',', '')
-    spacs.Volume = spacs.Volume.astype(int)
+    spacs.Volume = spacs.Volume.str.replace(r'$', '')
+    spacs.Volume = spacs.Volume.astype(float)
     volume_leaders = spacs.sort_values('Volume', ascending=False).head(limit)
     volume_leaders.Volume = volume_leaders.apply(lambda x: '{:,}'.format(x.Volume), axis=1)
+    volume_leaders.Volume = volume_leaders.Volume.astype(str) + ' $'
 
     return volume_leaders[['Price', 'Change', 'Volume']]
 
